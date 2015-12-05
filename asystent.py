@@ -22,7 +22,8 @@ import sys
 from photutils import daofind
 from photutils.extern.imageutils.stats import sigma_clipped_stats
 import matplotlib.image as mpimg
-
+import thread
+import threading
 warnings.filterwarnings('ignore')
 watchdog_img = mpimg.imread('watchdog.dif')
 
@@ -51,12 +52,10 @@ dec_key = 'DEC'
 # watchdog param
 file_to_watch = ["*.fits"]
 sleep_time = 1.0
-pointing_object_name = 'point'
-
 # plot parameters
 x_plot = 10
 y_plot = 8
-
+imageSize = 1000
 # clear
 files_to_rm = ['*.axy', '*.corr', '*.xyls', '*.match',
                '*.new', '*.rdls', '*.solved', '*.wcs']
@@ -72,7 +71,7 @@ avg_pol = 0
 ##############
 
 
-class MyHandler(PatternMatchingEventHandler):
+class WatchObs(PatternMatchingEventHandler):
     patterns = file_to_watch
 
     def on_created(self, event):
@@ -85,18 +84,19 @@ class MyHandler(PatternMatchingEventHandler):
             solve_coo, solve_file_hdr, solve_file_data = open_solve_file(
                 str(self.file_to_open).split(".")[0]+".new")
             show_ds9(fits_coo, solve_coo)
-            if solve_file_hdr['OBJECT'] != pointing_object_name:
-                star = Star()
-                x, y = star_pix(solve_file_hdr, fits_coo)
+
+            star = Star()
+            x, y = star_pix(solve_file_hdr, fits_coo)
+            if (x < imageSize and y < imageSize):
                 x, y = star.centroid(x, y, solve_file_data, radius)
                 fwhm_x, fwhm_y = star.get_fwhm(x, y, radius,
                                                solve_file_data, medv=None)
                 flux, aperture_area = star.phot(x, y, radius,
-                                                solve_file_data, fwhm_x, fwhm_y)
+                                            solve_file_data, fwhm_x, fwhm_y)
                 signal_to_noise = star.snr(x, y, radius,
-                                           solve_file_data,
-                                           fwhm_x, fwhm_y,
-                                           flux, aperture_area)
+                                       solve_file_data,
+                                       fwhm_x, fwhm_y,
+                                       flux, aperture_area)
                 flux_tab.append(flux)
                 snr_tab.append(signal_to_noise)
                 fwhm_tab.append((fwhm_x + fwhm_y)/2.)
@@ -104,7 +104,20 @@ class MyHandler(PatternMatchingEventHandler):
                     pol_tab, avg_pol = pol_calc(flux, solve_file_hdr)
                 else:
                     pass
-        plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol)
+                plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol)
+
+    def on_modified(self, event):
+        print "Got it!", event.src_path
+        self.file_to_open = event.src_path
+        fits_coo = open_file(self.file_to_open)
+        if solve_field(fits_coo):
+            solve_coo, solve_file_hdr, solve_file_data = open_solve_file(
+                str(self.file_to_open).split(".")[0]+".new")
+            show_ds9(fits_coo, solve_coo)
+
+
+
+
 
 
 class Star:
@@ -159,13 +172,15 @@ class Star:
         x0, y0, arr = self.cut_region(x, y, radius, data)
         mean, median, std = sigma_clipped_stats(arr, sigma=sigma)
         sources = daofind(arr - median, fwhm=fwhm_daofind, threshold=5.*std)
+        cx, cy = 0, 0
         for i in sources:
             dist_temp = math.sqrt(abs(i[1]+x0-x)**2 + abs(i[2]+y0-y)**2)
             if dist_temp < dist:
                 dist = dist_temp
                 cx = i[1]
                 cy = i[2]
-
+            else:
+                cx, cy = 0, 0
         print 'center: ', cx+x0+1, cy+y0+1
         return (cx+x0, cy+y0)
 
@@ -364,11 +379,10 @@ if __name__ == "__main__":
     else:
         print "error - podaj sciezke"
 
-    event_handler = MyHandler()
+    event_handler = WatchObs()
     observer = Observer()
     observer.schedule(event_handler, path=path, recursive=False)
     observer.start()
-
     try:
         while True:
             time.sleep(sleep_time)
