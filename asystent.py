@@ -22,8 +22,6 @@ import sys
 from photutils import daofind
 from photutils.extern.imageutils.stats import sigma_clipped_stats
 import matplotlib.image as mpimg
-import thread
-import threading
 warnings.filterwarnings('ignore')
 watchdog_img = mpimg.imread('watchdog.dif')
 
@@ -87,24 +85,26 @@ class WatchObs(PatternMatchingEventHandler):
 
             star = Star()
             x, y = star_pix(solve_file_hdr, fits_coo)
-            if (x < imageSize and y < imageSize):
-                x, y = star.centroid(x, y, solve_file_data, radius)
-                fwhm_x, fwhm_y = star.get_fwhm(x, y, radius,
+            if ((x < imageSize) and (y < imageSize)):
+                #fileName = self.file_to_open.split("/")[-1]
+                if fits_coo.separation(solve_coo) < 5 * u.arcmin:
+                    x, y = star.centroid(x, y, solve_file_data, radius)
+                    fwhm_x, fwhm_y = star.get_fwhm(x, y, radius,
                                                solve_file_data, medv=None)
-                flux, aperture_area = star.phot(x, y, radius,
+                    flux, aperture_area = star.phot(x, y, radius,
                                             solve_file_data, fwhm_x, fwhm_y)
-                signal_to_noise = star.snr(x, y, radius,
+                    signal_to_noise = star.snr(x, y, radius,
                                        solve_file_data,
                                        fwhm_x, fwhm_y,
                                        flux, aperture_area)
-                flux_tab.append(flux)
-                snr_tab.append(signal_to_noise)
-                fwhm_tab.append((fwhm_x + fwhm_y)/2.)
-                if filter_check(solve_file_hdr):
-                    pol_tab, avg_pol = pol_calc(flux, solve_file_hdr)
-                else:
-                    pass
-                plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol)
+                    flux_tab.append(flux)
+                    snr_tab.append(signal_to_noise)
+                    fwhm_tab.append((fwhm_x + fwhm_y)/2.)
+                    if filter_check(solve_file_hdr):
+                        pol_tab, avg_pol = pol_calc(flux, solve_file_hdr)
+                    else:
+                        pass
+                    plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol)
 
     def on_modified(self, event):
         print "Got it!", event.src_path
@@ -172,17 +172,16 @@ class Star:
         x0, y0, arr = self.cut_region(x, y, radius, data)
         mean, median, std = sigma_clipped_stats(arr, sigma=sigma)
         sources = daofind(arr - median, fwhm=fwhm_daofind, threshold=5.*std)
-        cx, cy = 0, 0
+        cx, cy = x, y
         for i in sources:
             dist_temp = math.sqrt(abs(i[1]+x0-x)**2 + abs(i[2]+y0-y)**2)
             if dist_temp < dist:
                 dist = dist_temp
-                cx = i[1]
-                cy = i[2]
-            else:
-                cx, cy = 0, 0
-        print 'center: ', cx+x0+1, cy+y0+1
-        return (cx+x0, cy+y0)
+                cx = i[1] + x0
+                cy = i[2] + y0
+
+        print 'center: ', cx + 1, cy + 1
+        return (cx, cy)
 
     def cut_region(self, x, y, radius, data):
         n = radius
@@ -206,8 +205,11 @@ class Star:
     def snr(self, x, y, radius, data, fwhm_x, fwhm_y, flux, aperture_area):
         x0, y0, arr = self.cut_region(x, y, radius, data)
         mean, median, std = sigma_clipped_stats(arr, sigma=sigma)
-        signal_to_noise = flux / math.sqrt(flux +
-                                           aperture_area * math.pow(std, 2))
+        try:
+            signal_to_noise = flux / math.sqrt(flux +
+                                               aperture_area * math.pow(std, 2))
+        except ValueError:
+            signal_to_noise = 0
         print 'snr:', signal_to_noise
 
         return signal_to_noise
@@ -242,6 +244,8 @@ def show_ds9(fits_coo, solve_coo):
     d = ds9.ds9()
     d.set("file "+str(event_handler.file_to_open).split(".")[0]+".new")
     d.set('scale zscale')
+    d.set('zoom to fit')
+    d.set('match frame wcs')
     d.set('regions', 'fk5; line(' + str(solve_coo.ra.deg) + ',' +
           str(solve_coo.dec.deg) + ',' + str(fits_coo.ra.deg) +
           ',' + str(fits_coo.dec.deg) + ')')

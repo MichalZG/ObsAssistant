@@ -1,6 +1,6 @@
 €}q(Uasystent]q(U
 time_limitqU
 scale_highqUobserverqUra_keyqUstar_pixqUopen_solve_fileqUsolve_fieldq	Uradiusq
-Ufiles_to_rmqUsolve_depthqUWatchObsqUpol_calcqU	scale_lowqUplotqUfile_to_watchqUStarqU	open_fileqUfwhm_multiplierqUflux_tabqUx_plotqUpol_tabqUy_plotqUavg_polqUfwhm_tabqUsnr_tabqUevent_handlerqUargsqUpol_flux_tabqUsolve_radiusqUdec_keyq Ufwhm_daofindq!Uwatchdog_imgq"Upathq#U	imageSizeq$U
-annulis_inq%Ufilter_checkq&Usigmaq'Uclearq(Ushow_ds9q)Uannulis_outq*U
+Ufiles_to_rmqUsolve_depthqUWatchObsqUpol_calcqU	scale_lowqUplotqUfile_to_watchqUStarqU	open_fileqUfwhm_multiplierqUflux_tabqUx_plotqUpol_tabqUy_plotqUavg_polqUfwhm_tabqUsnr_tabqUargsqUevent_handlerqUsolve_radiusqUdec_keyqUfwhm_daofindq Uwatchdog_imgq!Upathq"Upol_flux_tabq#U
+annulis_inq$Ufilter_checkq%U	imageSizeq&Usigmaq'Uclearq(Ushow_ds9q)Uannulis_outq*U
 sleep_timeq+eUsync]q,(UdataListq-Uextq.UdataDirq/Ufiq0UtempDirq1Udiffq2UtempListq3eu.
