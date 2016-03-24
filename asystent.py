@@ -121,6 +121,8 @@ class WatchObs(PatternMatchingEventHandler):
 
 
 class Star:
+
+#code copy from GINGA https://ginga.readthedocs.org/en/latest/
     def __init__(self):
         self.lock = threading.RLock()
         self.skylevel_magnification = 1.05
@@ -381,7 +383,7 @@ if __name__ == "__main__":
     if len(args) > 0:
         path = args[0]
     else:
-        print "error - podaj sciezke"
+        print "error - write path to files"
 
     event_handler = WatchObs()
     observer = Observer()
