@@ -5,8 +5,8 @@ import os
 tempDir = '/home/pi/Temp/rsync/data/temp/'
 dataDir = '/home/pi/Temp/rsync/data/'
 ext = '*.temp'
-os.system("sshpass -p VW86Jetta rsync zielona@beta:/home/zielona/.jastrocam3/preview.fits ~/Temp/rsync/data/temp/")
-os.system("sshpass -p VW86Jetta rsync zielona@beta:/home/zielona/dane/20150412/*.fits ~/Temp/rsync/data/temp/")
+os.system("sshpass -p <pass> rsync zielona@beta:/home/zielona/.jastrocam3/preview.fits ~/Temp/rsync/data/temp/")
+os.system("sshpass -p <pass> rsync zielona@beta:/home/zielona/dane/20150412/*.fits ~/Temp/rsync/data/temp/")
 tempList = sorted(glob.glob(tempDir + ext))
 dataList = sorted(glob.glob(dataDir + ext))
 
@@ -16,8 +16,8 @@ while True:
         for fi in diff:
             shutil.copy(tempDir + fi, dataDir)
 
-    os.system("sshpass -p VW86Jetta rsync zielona@beta:/home/zielona/.jastrocam3/preview.fits ~/Temp/rsync/data/temp/")
-    os.system("sshpass -p VW86Jetta rsync zielona@beta:/home/zielona/dane/20150412/*.fits ~/Temp/rsync/data/temp/")
+    os.system("sshpass -p <pass> rsync zielona@beta:/home/zielona/.jastrocam3/preview.fits ~/Temp/rsync/data/temp/")
+    os.system("sshpass -p <pass> rsync zielona@beta:/home/zielona/dane/20150412/*.fits ~/Temp/rsync/data/temp/")
     tempList = sorted(glob.glob(tempDir + ext))
     dataList = sorted(glob.glob(dataDir + ext))
 
