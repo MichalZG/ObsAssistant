@@ -1,5 +1,5 @@
 import time
-import pyds9
+import pyds9 as ds9
 import os
 import glob
 import astropy.io.fits as fits
