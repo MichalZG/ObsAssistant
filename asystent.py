@@ -51,7 +51,7 @@ dec_key = 'DEC'
 # watchdog param
 file_to_watch = ["*.fits"]
 sleep_time = 1.0
-max_sleep = 300
+max_sleep = 3
 sleep_dur = 0
 # plot parameters
 x_plot = 10
@@ -115,7 +115,7 @@ class WatchObs(PatternMatchingEventHandler):
         print("Got it!", event.src_path)
         global sleep_dur
         sleep_dur = 0
-	self.file_to_open = event.src_path
+        self.file_to_open = event.src_path
         fits_coo = open_file(self.file_to_open)
         if solve_field(fits_coo):
             solve_coo, solve_file_hdr, solve_file_data = open_solve_file(
@@ -404,6 +404,8 @@ if __name__ == "__main__":
                 pygame.init()
                 pygame.mixer.music.load('Angry-dog.mp3')
                 pygame.mixer.music.play()
+                time.sleep(7)
+
     except KeyboardInterrupt:
         clear()
         observer.stop()
