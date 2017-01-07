@@ -19,6 +19,7 @@ from photutils import aperture_photometry
 import matplotlib.pyplot as plt
 import matplotlib
 import sys
+import pygame
 from photutils import daofind
 from astropy.stats import sigma_clipped_stats
 import matplotlib.image as mpimg
@@ -50,6 +51,8 @@ dec_key = 'DEC'
 # watchdog param
 file_to_watch = ["*.fits"]
 sleep_time = 1.0
+max_sleep = 5
+sleep_dur = 0
 # plot parameters
 x_plot = 10
 y_plot = 8
@@ -77,6 +80,8 @@ class WatchObs(PatternMatchingEventHandler):
         self.file_to_open = event.src_path
         global pol_tab
         global avg_pol
+        global max_sleep
+        sleep_dur = 0
         fits_coo = open_file(self.file_to_open)
         if solve_field(fits_coo):
             solve_coo, solve_file_hdr, solve_file_data = open_solve_file(
@@ -392,6 +397,11 @@ if __name__ == "__main__":
     try:
         while True:
             time.sleep(sleep_time)
+            sleep_dur += 1
+            if sleep_dur >= max_sleep:
+                pygame.init()
+                pygame.mixer.music.load('/home/pi/Temp/Angry-dog.mp3')
+                pygame.mixer.music.play()
     except KeyboardInterrupt:
         clear()
         observer.stop()
