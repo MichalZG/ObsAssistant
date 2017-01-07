@@ -1,5 +1,5 @@
 import time
-import ds9
+import pyds9
 import os
 import glob
 import astropy.io.fits as fits
@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import sys
 from photutils import daofind
-from photutils.extern.imageutils.stats import sigma_clipped_stats
+from astropy.stats import sigma_clipped_stats
 import matplotlib.image as mpimg
 warnings.filterwarnings('ignore')
 watchdog_img = mpimg.imread('watchdog.dif')
@@ -73,7 +73,7 @@ class WatchObs(PatternMatchingEventHandler):
     patterns = file_to_watch
 
     def on_created(self, event):
-        print "Got it!", event.src_path
+        print("Got it!", event.src_path)
         self.file_to_open = event.src_path
         global pol_tab
         global avg_pol
@@ -107,7 +107,7 @@ class WatchObs(PatternMatchingEventHandler):
                     plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol)
 
     def on_modified(self, event):
-        print "Got it!", event.src_path
+        print("Got it!", event.src_path)
         self.file_to_open = event.src_path
         fits_coo = open_file(self.file_to_open)
         if solve_field(fits_coo):
@@ -165,7 +165,7 @@ class Star:
         fwhm_x, cx, sdx, maxx = self.calc_fwhm(xarr, medv=medv)
         fwhm_y, cy, sdy, maxy = self.calc_fwhm(yarr, medv=medv)
 
-        print 'fwhm:', fwhm_x, fwhm_y
+        print('fwhm:', fwhm_x, fwhm_y)
 
         return fwhm_x, fwhm_y
 
@@ -182,7 +182,7 @@ class Star:
                 cx = i[1] + x0
                 cy = i[2] + y0
 
-        print 'center: ', cx + 1, cy + 1
+        print('center: ', cx + 1, cy + 1)
         return (cx, cy)
 
     def cut_region(self, x, y, radius, data):
@@ -212,7 +212,7 @@ class Star:
                                                aperture_area * math.pow(std, 2))
         except ValueError:
             signal_to_noise = 0
-        print 'snr:', signal_to_noise
+        print('snr:', signal_to_noise)
 
         return signal_to_noise
 
@@ -222,7 +222,7 @@ class Star:
         mean, median, std = sigma_clipped_stats(arr, sigma=sigma)
 
         aperture_r = ((fwhm_x + fwhm_y)/2.0) * fwhm_multiplier
-        print 'aper:', aperture_r
+        print('aper:', aperture_r)
         # r_in = aperture_r + annulis_in
         # r_out = aperture_r + annulis_out
         apertures = CircularAperture((x, y), aperture_r)
@@ -238,7 +238,7 @@ class Star:
         # print 'bkg', phot_table['aperture_sum_bkg'] / annulus_area
         # final_sum = phot_table['aperture_sum_raw'] - bkg_sum
         final_sum = rawflux_table['aperture_sum'] - aperture_area * median
-        print 'flux:', final_sum[0]
+        print('flux:', final_sum[0])
         return final_sum[0], aperture_area
 
 
@@ -275,13 +275,13 @@ def solve_field(fits_coo):
     if os.path.exists(str(event_handler.file_to_open).split(".")[0]+'.new'):
         return True
     else:
-        print 'solve error'
+        print('solve error')
         return False
 
 
 def open_file(file_to_open):
     hdr = fits.getheader(file_to_open)
-    print 'fits coo:', str(hdr[ra_key])+" "+str(hdr[dec_key])
+    print('fits coo:', str(hdr[ra_key])+" "+str(hdr[dec_key]))
     fits_coo = SkyCoord(hdr[ra_key]+" "+hdr[dec_key],
                         'icrs', unit=(u.hour, u.deg))
     return fits_coo
@@ -370,10 +370,10 @@ def plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol):
     plt.pause(0.0001)
 
 def clear():
-    print 'cleaning.....'
+    print('cleaning.....')
     for i in files_to_rm:
         files = glob.glob(path + i)
-        print path + i
+        print(path + i)
         for j in files:
             os.remove(j)
 
@@ -383,7 +383,7 @@ if __name__ == "__main__":
     if len(args) > 0:
         path = args[0]
     else:
-        print "error - write path to files"
+        print("error - write path to files")
 
     event_handler = WatchObs()
     observer = Observer()
