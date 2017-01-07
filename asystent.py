@@ -51,7 +51,7 @@ dec_key = 'DEC'
 # watchdog param
 file_to_watch = ["*.fits"]
 sleep_time = 1.0
-max_sleep = 5
+max_sleep = 30
 sleep_dur = 0
 # plot parameters
 x_plot = 10
