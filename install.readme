@@ -2,3 +2,8 @@ conda create -n astro python=2 astropy numpy matplotlib scipy pillow
 pip install pygame watchdog photutils pyds9
 ssh-keygen
 ssh-copy-id -i ~/.ssh/id_rsa.pub observer@epsilon
+
+# in ObsAsystent path
+mkdir temp temp/data temp/temp
+
+
