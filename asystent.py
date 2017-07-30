@@ -213,7 +213,7 @@ class Star:
         ht, wd = data.shape
         x0, x1 = max(0, x-n), min(wd-1, x+n)
         y0, y1 = max(0, y-n), min(ht-1, y+n)
-        arr = data[y0:y1+1, x0:x1+1]
+        arr = data[int(y0):int(y1)+1, int(x0):int(x1)+1]
 
         return (x0, y0, arr)
 
@@ -222,8 +222,8 @@ class Star:
         ht, wd = data.shape
         x0, x1 = max(0, x-n), min(wd-1, x+n)
         y0, y1 = max(0, y-n), min(ht-1, y+n)
-        xarr = data[y, x0:x1+1]
-        yarr = data[y0:y1+1, x]
+        xarr = data[int(y), int(x0):int(x1)+1]
+        yarr = data[int(y0):int(y1)+1, int(x)]
 
         return (x0, y0, xarr, yarr)
 
