@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import sys
 import pygame
-from photutils import daofind
+from photutils import DAOStarFinder as daofind
 from astropy.stats import sigma_clipped_stats
 import matplotlib.image as mpimg
 warnings.filterwarnings('ignore')
