@@ -196,7 +196,7 @@ class Star:
         dist = 1024
         x0, y0, arr = self.cut_region(x, y, radius, data)
         mean, median, std = sigma_clipped_stats(arr, sigma=sigma)
-	daofind = DAOStarFinder(threshold=5.*std, fwhm=fwhm_daofind) 
+        daofind = DAOStarFinder(threshold=5.*std, fwhm=fwhm_daofind)
         sources = daofind.find_stars(arr - median)
         cx, cy = x, y
         for i in sources:
