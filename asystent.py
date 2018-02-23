@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import sys
 import pygame
-from photutils import DAOStarFinder as daofind
+from photutils import DAOStarFinder
 from astropy.stats import sigma_clipped_stats
 import matplotlib.image as mpimg
 warnings.filterwarnings('ignore')
@@ -196,7 +196,8 @@ class Star:
         dist = 1024
         x0, y0, arr = self.cut_region(x, y, radius, data)
         mean, median, std = sigma_clipped_stats(arr, sigma=sigma)
-        sources = daofind(arr - median, fwhm=fwhm_daofind, threshold=5.*std)
+	daofind = DAOStarFinder(threshold=5.*std, fwhm=fwhm_daofind) 
+        sources = daofind.find_stars(arr - median)
         cx, cy = x, y
         for i in sources:
             dist_temp = math.sqrt(abs(i[1]+x0-x)**2 + abs(i[2]+y0-y)**2)
@@ -291,7 +292,6 @@ def solve_field(fits_coo):
 	                       '--overwrite',
 			               '--no-verify',
 			               '--no-plots',
-			               '--no-fits2fits',
                            str(event_handler.file_to_open)]
     sub.Popen(solve_field_command, stdout=sub.PIPE,
               stderr=sub.PIPE).communicate()
