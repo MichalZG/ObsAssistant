@@ -76,7 +76,7 @@ pol_flux_tab = deque(maxlen=max_plot_len)
 plt.ion()
 avg_pol = 0
 im_object_name = ''
-im_counter = 1
+im_counter = 0
 plot_clear = False
 ##############
 
