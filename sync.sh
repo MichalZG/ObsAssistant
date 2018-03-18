@@ -1,7 +1,7 @@
 #!/bin/sh
-
+eval "$(ssh-agent -s)"
+ssh-add
 while true ; do
-sshpass -p <pass> rsync -c --temp-dir="/home/pi/Temp/rsync/data/temp/" zielona@beta:/home/zielona/.jastrocam3/preview.fits ~/Temp/rsync/data/
-#sshpass -p VW86Jetta rsync -c --temp-dir="/home/pi/Temp/rsync/data/temp/" zielona@beta:/home/zielona/dane/20151206/*.fits ~/Temp/rsync/data/
+rsync -c --temp-dir="/home/ogloza/Programs/ObsAssistant/temp/temp/" observer@epsilon:/home/observer/.jastrocam3/preview.fits /home/ogloza/Programs/ObsAssistant/temp/data/
 sleep 1 # or however many seconds you like
 done

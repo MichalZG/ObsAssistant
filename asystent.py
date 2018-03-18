@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import sys
 import pygame
-from photutils import daofind
+from photutils import DAOStarFinder
 from astropy.stats import sigma_clipped_stats
 import matplotlib.image as mpimg
 warnings.filterwarnings('ignore')
@@ -30,7 +30,7 @@ matplotlib.use('QT4Agg')
 
 # photometry, backgrund estimation, snr etc.
 radius = 30  # radius from object center (fits coordinates) for backgroun est.
-sigma = 3.0  # The number of standard deviations to use as the clipping limit.
+sigma = 2.0  # The number of standard deviations to use as the clipping limit.
 fwhm_daofind = 2.0  # estimate FWHM for daofind
 fwhm_multiplier = 2  # fwhm * fwhm_multiplier = aperture
 annulis_in = 2  # value add to aperture
@@ -47,11 +47,14 @@ solve_depth = '40,80,100,160,250'
 # head Key
 ra_key = 'RA'
 dec_key = 'DEC'
+filter_key = 'FILTER'
+object_key = 'OBJECT'
+exp_key = 'EXPTIME'
 
 # watchdog param
 file_to_watch = ["*.fits"]
 sleep_time = 1.0
-max_sleep = 3
+max_sleep = 300
 sleep_dur = 0
 # plot parameters
 x_plot = 10
@@ -69,6 +72,9 @@ pol_tab = []
 pol_flux_tab = []
 plt.ion()
 avg_pol = 0
+im_object_name = ''
+im_counter = 1
+plot_clear = False
 ##############
 
 
@@ -81,13 +87,15 @@ class WatchObs(PatternMatchingEventHandler):
         global pol_tab
         global avg_pol
         global sleep_dur
+        global im_object_name
+        global im_counter
+        global plot_clear
         sleep_dur = 0
         fits_coo = open_file(self.file_to_open)
         if solve_field(fits_coo):
             solve_coo, solve_file_hdr, solve_file_data = open_solve_file(
                 str(self.file_to_open).split(".")[0]+".new")
             show_ds9(fits_coo, solve_coo)
-
             star = Star()
             x, y = star_pix(solve_file_hdr, fits_coo)
             if ((x < imageSize) and (y < imageSize)):
@@ -98,7 +106,7 @@ class WatchObs(PatternMatchingEventHandler):
                                                solve_file_data, medv=None)
                     flux, aperture_area = star.phot(x, y, radius,
                                             solve_file_data, fwhm_x, fwhm_y)
-                    signal_to_noise = star.snr(x, y, radius,
+                    signal_to_noise, bkg_median = star.snr(x, y, radius,
                                        solve_file_data,
                                        fwhm_x, fwhm_y,
                                        flux, aperture_area)
@@ -109,7 +117,15 @@ class WatchObs(PatternMatchingEventHandler):
                         pol_tab, avg_pol = pol_calc(flux, solve_file_hdr)
                     else:
                         pass
-                    plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol)
+                    solve_file_object_name = solve_file_hdr[object_key]
+                    if solve_file_object_name != im_object_name:
+                        im_object_name = solve_file_object_name
+                        plot_clear = True
+                        im_counter = 1
+                    else:
+                        im_counter += 1
+                        plot_clear = False
+                    plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol, solve_file_hdr, plot_clear, im_counter, bkg_median)
 
     def on_modified(self, event):
         print("Got it!", event.src_path)
@@ -180,7 +196,8 @@ class Star:
         dist = 1024
         x0, y0, arr = self.cut_region(x, y, radius, data)
         mean, median, std = sigma_clipped_stats(arr, sigma=sigma)
-        sources = daofind(arr - median, fwhm=fwhm_daofind, threshold=5.*std)
+        daofind = DAOStarFinder(threshold=5.*std, fwhm=fwhm_daofind)
+        sources = daofind.find_stars(arr - median)
         cx, cy = x, y
         for i in sources:
             dist_temp = math.sqrt(abs(i[1]+x0-x)**2 + abs(i[2]+y0-y)**2)
@@ -197,7 +214,7 @@ class Star:
         ht, wd = data.shape
         x0, x1 = max(0, x-n), min(wd-1, x+n)
         y0, y1 = max(0, y-n), min(ht-1, y+n)
-        arr = data[y0:y1+1, x0:x1+1]
+        arr = data[int(y0):int(y1)+1, int(x0):int(x1)+1]
 
         return (x0, y0, arr)
 
@@ -206,8 +223,8 @@ class Star:
         ht, wd = data.shape
         x0, x1 = max(0, x-n), min(wd-1, x+n)
         y0, y1 = max(0, y-n), min(ht-1, y+n)
-        xarr = data[y, x0:x1+1]
-        yarr = data[y0:y1+1, x]
+        xarr = data[int(y), int(x0):int(x1)+1]
+        yarr = data[int(y0):int(y1)+1, int(x)]
 
         return (x0, y0, xarr, yarr)
 
@@ -221,7 +238,7 @@ class Star:
             signal_to_noise = 0
         print('snr:', signal_to_noise)
 
-        return signal_to_noise
+        return signal_to_noise, median
 
     def phot(self, x, y, radius, data, fwhm_x, fwhm_y):
 
@@ -275,7 +292,6 @@ def solve_field(fits_coo):
 	                       '--overwrite',
 			               '--no-verify',
 			               '--no-plots',
-			               '--no-fits2fits',
                            str(event_handler.file_to_open)]
     sub.Popen(solve_field_command, stdout=sub.PIPE,
               stderr=sub.PIPE).communicate()
@@ -341,31 +357,42 @@ def filter_check(solve_file_hdr):
         return False
 
 
-def plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol):
+def plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol, hdr, clear, im_counter, bkg_median):
     plt.figure(1, figsize=(x_plot, y_plot))
-    ax0 = plt.subplot(511)
-    ax0 = plt.imshow(watchdog_img)
-    ax0.axes.get_xaxis().set_visible(False)
-    ax0.axes.get_yaxis().set_visible(False)
+    if clear:
+        plt.clf()
+    ax01 = plt.subplot(521)
+    ax01.cla()
+    ax01.text(0.1, 0.8, "Object: "+hdr[object_key], fontsize=14)
+    ax01.text(0.1, 0.55, "Filter: "+hdr[filter_key], fontsize=14)
+    ax01.text(0.1, 0.3, "Exptime: "+str(hdr[exp_key]), fontsize=14)
+    ax01.text(0.1, 0.05, "BKG: "+str(bkg_median), fontsize=14)
+    ax01.text(0.5, 0.5, "NUM: "+str(im_counter), fontsize=15, fontweight='bold')
+    ax01.axes.get_xaxis().set_visible(False)
+    ax01.axes.get_yaxis().set_visible(False)
+    ax02 = plt.subplot(522)
+    ax02.imshow(watchdog_img)
+    ax02.axes.get_xaxis().set_visible(False)
+    ax02.axes.get_yaxis().set_visible(False)
     ax1 = plt.subplot(512)
-    ax1.set_title('FLUX [counts] - %.2f' % (flux_tab[-1]))
+    ax1.set_title('FLUX [counts]: %.2f' % (flux_tab[-1]))
     ax1.set_xlim(-0.2, len(flux_tab) - 0.8)
     ax1.set_ylim(min(flux_tab) * 0.9, max(flux_tab) * 1.1)
     ax1.plot(flux_tab, 'ro')
     ax2 = plt.subplot(513)
-    ax2.set_title('SNR - %.2f' % (snr_tab[-1]))
+    ax2.set_title('SNR: %.2f' % (snr_tab[-1]))
     ax2.set_xlim(-0.2, len(snr_tab) - 0.8)
     ax2.set_ylim(min(snr_tab) * 0.9, max(snr_tab) * 1.1)
     ax2.plot(snr_tab, 'ro')
     ax3 = plt.subplot(514)
-    ax3.set_title('FWHM [pix] - %.2f' % (fwhm_tab[-1]))
+    ax3.set_title('FWHM [pix]: %.2f' % (fwhm_tab[-1]))
     ax3.set_xlim(-0.2, len(fwhm_tab) - 0.8)
     ax3.set_ylim(min(fwhm_tab) * 0.9, max(fwhm_tab) * 1.1)
     ax3.plot(fwhm_tab, 'ro')
     ax4 = plt.subplot(515)
     if pol_tab:
         ax4.cla()
-        ax4.set_title('PD [%]' + ' - %.2f' % avg_pol)
+        ax4.set_title('PD [%]' + ': %.2f' % avg_pol)
         ax4.set_xlim(-0.2, len(pol_tab) - 0.8)
         ax4.set_ylim(min(pol_tab) * 0.9, max(pol_tab) * 1.1)
         ax4.axhline(y=avg_pol, xmin=0, xmax=len(pol_tab) * 1.1,
