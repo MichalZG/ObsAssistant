@@ -51,6 +51,7 @@ dec_key = 'DEC'
 filter_key = 'FILTER'
 object_key = 'OBJECT'
 exp_key = 'EXPTIME'
+time_key = 'TIME-OBS'
 
 # watchdog param
 file_to_watch = ["*.fits"]
@@ -368,8 +369,11 @@ def plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol, hdr, clear, im_counter, 
     ax01.text(0.1, 0.55, "Filter: "+hdr[filter_key], fontsize=14)
     ax01.text(0.1, 0.3, "Exptime: "+str(hdr[exp_key]), fontsize=14)
     ax01.text(0.1, 0.05, "BKG: "+str(bkg_median), fontsize=14)
-    ax01.text(0.5, 0.5, "NUM: "+str(im_counter),
+    ax01.text(0.5, 0.8, "NUM: "+str(im_counter),
               fontsize=15, fontweight='bold')
+    ax01.text(0.5, 0.4, str(hdr[time_key][:8]),
+              fontsize=15, fontweight='bold')
+
     ax01.axes.get_xaxis().set_visible(False)
     ax01.axes.get_yaxis().set_visible(False)
     ax02 = plt.subplot(522)
