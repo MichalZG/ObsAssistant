@@ -361,6 +361,7 @@ def plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol, hdr, clear, im_counter, 
     plt.figure(1, figsize=(x_plot, y_plot))
     if clear:
         plt.clf()
+    plt.clf()
     ax01 = plt.subplot(521)
     ax01.cla()
     ax01.text(0.1, 0.8, "Object: "+hdr[object_key], fontsize=14)
