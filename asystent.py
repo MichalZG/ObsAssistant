@@ -96,6 +96,7 @@ class WatchObs(PatternMatchingEventHandler):
         sleep_dur = 0
         fits_coo = open_file(self.file_to_open)
         if solve_field(fits_coo):
+        	im_counter += 1
             solve_coo, solve_file_hdr, solve_file_data = open_solve_file(
                 str(self.file_to_open).split(".")[0]+".new")
             show_ds9(fits_coo, solve_coo)
