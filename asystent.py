@@ -2,6 +2,7 @@ import time
 import pyds9 as ds9
 import os
 import glob
+from collections import deque
 import astropy.io.fits as fits
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
@@ -57,6 +58,7 @@ sleep_time = 1.0
 max_sleep = 300
 sleep_dur = 0
 # plot parameters
+max_plot_len = 5
 x_plot = 10
 y_plot = 8
 imageSize = 1000
@@ -65,11 +67,11 @@ files_to_rm = ['*.axy', '*.corr', '*.xyls', '*.match',
                '*.new', '*.rdls', '*.solved', '*.wcs']
 
 ##############
-flux_tab = []
-snr_tab = []
-fwhm_tab = []
-pol_tab = []
-pol_flux_tab = []
+flux_tab = deque(maxlen=max_plot_len)
+snr_tab = deque(maxlen=max_plot_len)
+fwhm_tab = deque(maxlen=max_plot_len)
+pol_tab = deque(maxlen=max_plot_len)
+pol_flux_tab = deque(maxlen=max_plot_len)
 plt.ion()
 avg_pol = 0
 im_object_name = ''
@@ -103,13 +105,13 @@ class WatchObs(PatternMatchingEventHandler):
                 if fits_coo.separation(solve_coo) < 5 * u.arcmin:
                     x, y = star.centroid(x, y, solve_file_data, radius)
                     fwhm_x, fwhm_y = star.get_fwhm(x, y, radius,
-                                               solve_file_data, medv=None)
+                                                   solve_file_data, medv=None)
                     flux, aperture_area = star.phot(x, y, radius,
-                                            solve_file_data, fwhm_x, fwhm_y)
+                                                    solve_file_data, fwhm_x, fwhm_y)
                     signal_to_noise, bkg_median = star.snr(x, y, radius,
-                                       solve_file_data,
-                                       fwhm_x, fwhm_y,
-                                       flux, aperture_area)
+                                                           solve_file_data,
+                                                           fwhm_x, fwhm_y,
+                                                           flux, aperture_area)
                     flux_tab.append(flux)
                     snr_tab.append(signal_to_noise)
                     fwhm_tab.append((fwhm_x + fwhm_y)/2.)
@@ -125,7 +127,8 @@ class WatchObs(PatternMatchingEventHandler):
                     else:
                         im_counter += 1
                         plot_clear = False
-                    plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol, solve_file_hdr, plot_clear, im_counter, bkg_median)
+                    plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol,
+                         solve_file_hdr, plot_clear, im_counter, bkg_median)
 
     def on_modified(self, event):
         print("Got it!", event.src_path)
@@ -139,13 +142,9 @@ class WatchObs(PatternMatchingEventHandler):
             show_ds9(fits_coo, solve_coo)
 
 
-
-
-
-
 class Star:
 
-#code copy from GINGA https://ginga.readthedocs.org/en/latest/
+    # code copy from GINGA https://ginga.readthedocs.org/en/latest/
     def __init__(self):
         self.lock = threading.RLock()
         self.skylevel_magnification = 1.05
@@ -168,7 +167,8 @@ class Star:
         maxv = Y.max()
         Y = Y.clip(0, maxv)
         p0 = [0, N-1, maxv]
-        errfunc = lambda p, x, y: gauss_fn(x, p) - y
+
+        def errfunc(p, x, y): return gauss_fn(x, p) - y
         with self.lock:
             p1, success = optimize.leastsq(errfunc, p0[:], args=(X, Y))
         if not success:
@@ -282,16 +282,16 @@ def show_ds9(fits_coo, solve_coo):
 def solve_field(fits_coo):
     solve_field_command = ['solve-field',
                            '--ra', '%s' % (fits_coo.ra.deg),
-			               '--dec', '%s' % (fits_coo.dec.deg),
-			               '--radius', '%1.1f' % solve_radius,
-			               '--depth', solve_depth,
-			               '--cpulimit', '%f' % time_limit,
-			               '--scale-units', 'arcsecperpix',
-			               '--scale-low', '%.5f' % scale_low,
-			               '--scale-high', '%.5f' % scale_high,
-	                       '--overwrite',
-			               '--no-verify',
-			               '--no-plots',
+                           '--dec', '%s' % (fits_coo.dec.deg),
+                           '--radius', '%1.1f' % solve_radius,
+                                       '--depth', solve_depth,
+                                       '--cpulimit', '%f' % time_limit,
+                                       '--scale-units', 'arcsecperpix',
+                                       '--scale-low', '%.5f' % scale_low,
+                                       '--scale-high', '%.5f' % scale_high,
+                           '--overwrite',
+                                       '--no-verify',
+                                       '--no-plots',
                            str(event_handler.file_to_open)]
     sub.Popen(solve_field_command, stdout=sub.PIPE,
               stderr=sub.PIPE).communicate()
@@ -342,7 +342,7 @@ def pol_calc(flux, solve_file_hdr):
         q_st = (pol_flux_tab[3] - pol_flux_tab[2]) /\
                (pol_flux_tab[3] + pol_flux_tab[2])
         pd = np.sqrt(np.power(u_st, 2) + np.power(q_st, 2))
-        pol_tab.append(pd * 100)
+        pol_tab.append(0)
         avg_pol = reduce(lambda a, b: a + b, pol_tab) / len(pol_tab)
         del pol_flux_tab[:]
 
@@ -367,7 +367,8 @@ def plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol, hdr, clear, im_counter, 
     ax01.text(0.1, 0.55, "Filter: "+hdr[filter_key], fontsize=14)
     ax01.text(0.1, 0.3, "Exptime: "+str(hdr[exp_key]), fontsize=14)
     ax01.text(0.1, 0.05, "BKG: "+str(bkg_median), fontsize=14)
-    ax01.text(0.5, 0.5, "NUM: "+str(im_counter), fontsize=15, fontweight='bold')
+    ax01.text(0.5, 0.5, "NUM: "+str(im_counter),
+              fontsize=15, fontweight='bold')
     ax01.axes.get_xaxis().set_visible(False)
     ax01.axes.get_yaxis().set_visible(False)
     ax02 = plt.subplot(522)
@@ -403,6 +404,7 @@ def plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol, hdr, clear, im_counter, 
     plt.draw()
     plt.pause(0.0001)
 
+
 def clear():
     print('cleaning.....')
     for i in files_to_rm:
@@ -410,6 +412,7 @@ def clear():
         print(path + i)
         for j in files:
             os.remove(j)
+
 
 if __name__ == "__main__":
 
@@ -433,8 +436,8 @@ if __name__ == "__main__":
                 pygame.mixer.music.play()
                 time.sleep(7)
             else:
-            	pygame.mixer.music.stop()
-            	    
+                pygame.mixer.music.stop()
+
     except KeyboardInterrupt:
         clear()
         observer.stop()
