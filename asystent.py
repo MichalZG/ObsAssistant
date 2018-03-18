@@ -423,16 +423,18 @@ if __name__ == "__main__":
     observer = Observer()
     observer.schedule(event_handler, path=path, recursive=False)
     observer.start()
+    pygame.init()
     try:
         while True:
             time.sleep(sleep_time)
             sleep_dur += 1
             if sleep_dur >= max_sleep:
-                pygame.init()
                 pygame.mixer.music.load('Angry-dog.mp3')
                 pygame.mixer.music.play()
                 time.sleep(7)
-
+            else:
+            	pygame.mixer.music.stop()
+            	    
     except KeyboardInterrupt:
         clear()
         observer.stop()
