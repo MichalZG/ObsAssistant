@@ -59,7 +59,7 @@ sleep_time = 1.0
 max_sleep = 300
 sleep_dur = 0
 # plot parameters
-max_plot_len = 5
+max_plot_len = 50
 x_plot = 10
 y_plot = 8
 imageSize = 1000
@@ -121,16 +121,10 @@ class WatchObs(PatternMatchingEventHandler):
                     else:
                         pass
                     solve_file_object_name = solve_file_hdr[object_key]
-                    if solve_file_object_name != im_object_name:
-                        im_object_name = solve_file_object_name
-                        plot_clear = True
-                        im_counter = 1
-                    else:
-                        im_counter += 1
-                        plot_clear = False
+
                     plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol,
                          solve_file_hdr, plot_clear, im_counter, bkg_median)
-
+"""
     def on_modified(self, event):
         print("Got it!", event.src_path)
         global sleep_dur
@@ -141,7 +135,7 @@ class WatchObs(PatternMatchingEventHandler):
             solve_coo, solve_file_hdr, solve_file_data = open_solve_file(
                 str(self.file_to_open).split(".")[0]+".new")
             show_ds9(fits_coo, solve_coo)
-
+"""
 
 class Star:
 
@@ -365,6 +359,7 @@ def plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol, hdr, clear, im_counter, 
     plt.clf()
     ax01 = plt.subplot(521)
     ax01.cla()
+    time.sleep(0.1)
     ax01.text(0.1, 0.8, "Object: "+hdr[object_key], fontsize=14)
     ax01.text(0.1, 0.55, "Filter: "+hdr[filter_key], fontsize=14)
     ax01.text(0.1, 0.3, "Exptime: "+str(hdr[exp_key]), fontsize=14)
@@ -395,19 +390,10 @@ def plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol, hdr, clear, im_counter, 
     ax3.set_xlim(-0.2, len(fwhm_tab) - 0.8)
     ax3.set_ylim(min(fwhm_tab) * 0.9, max(fwhm_tab) * 1.1)
     ax3.plot(fwhm_tab, 'ro')
-    ax4 = plt.subplot(515)
-    if pol_tab:
-        ax4.cla()
-        ax4.set_title('PD [%]' + ': %.2f' % avg_pol)
-        ax4.set_xlim(-0.2, len(pol_tab) - 0.8)
-        ax4.set_ylim(min(pol_tab) * 0.9, max(pol_tab) * 1.1)
-        ax4.axhline(y=avg_pol, xmin=0, xmax=len(pol_tab) * 1.1,
-                    c="blue", linewidth=0.5, zorder=0)
-    ax4.plot(pol_tab, 'ro')
 
     plt.tight_layout()
     plt.draw()
-    plt.pause(0.0001)
+    plt.pause(0.01)
 
 
 def clear():
