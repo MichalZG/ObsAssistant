@@ -25,7 +25,7 @@ from photutils import DAOStarFinder
 from astropy.stats import sigma_clipped_stats
 import matplotlib.image as mpimg
 warnings.filterwarnings('ignore')
-watchdog_img = mpimg.imread('watchdog.dif')
+watchdog_img = mpimg.imread('/opt/ObsAssistant/watchdog.dif')
 
 matplotlib.use('QT4Agg')
 
@@ -424,7 +424,7 @@ if __name__ == "__main__":
             time.sleep(sleep_time)
             sleep_dur += 1
             if sleep_dur >= max_sleep:
-                pygame.mixer.music.load('Angry-dog.mp3')
+                pygame.mixer.music.load('/opt/ObsAssistant/Angry-dog.mp3')
                 pygame.mixer.music.play()
                 time.sleep(7)
             else:
