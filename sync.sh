@@ -9,7 +9,7 @@ else
 fi
 trap ":" INT
 
-seconds=10 # or however many seconds you like
+seconds=2 # or however many seconds you like
 
 while sleep $seconds ; do
   rsync -c --progress --temp-dir="$tmpdir/" observer@epsilon:/home/observer/.jastrocam3/preview.fits $destdir
