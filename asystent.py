@@ -126,7 +126,7 @@ class WatchObs(PatternMatchingEventHandler):
             x, y = star_pix(solve_file_hdr, fits_coo)
             if ((x < imageSize) and (y < imageSize)):
                 #fileName = self.file_to_open.split("/")[-1]
-                if fits_coo.separation(solve_coo) < 5 * u.arcmin:
+                if fits_coo.separation(solve_coo) < 50 * u.arcmin:
                     x, y = star.centroid(x, y, solve_file_data, radius)
                     fwhm_x, fwhm_y = star.get_fwhm(x, y, radius,
                                                    solve_file_data, medv=None)
