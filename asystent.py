@@ -462,7 +462,7 @@ def write_modbus(solve_coo):
         24594: time.time()
     }
 
-    for address, value in val_dict.iteritems():
+    for address, value in val_dict.items():
         builder = BinaryPayloadBuilder(byteorder=Endian.Big,
                                        wordorder=Endian.Big)
         builder.add_32bit_float(value)
