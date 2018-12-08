@@ -456,12 +456,13 @@ def write_modbus(solve_coo):
     val_dict = {
         24592: ra,
         24590: dec,
-        24594: time.time()
+        24594: time.time() - 1544000000.
     }
 
     for address, value in val_dict.items():
         builder = BinaryPayloadBuilder(byteorder=Endian.Big,
                                        wordorder=Endian.Big)
+        print(address, value)
         builder.add_32bit_float(value)
         payload = builder.build()
         registers = builder.to_registers()
