@@ -458,7 +458,7 @@ def write_modbus(solve_coo):
 
     val_dict = {
         24592: ra,
-        24590: dec
+        24590: dec,
         24594: time.time()
     }
 
