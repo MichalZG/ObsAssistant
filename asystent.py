@@ -446,10 +446,7 @@ def write_modbus(solve_coo):
 
     if solve_coo is None:
         return False
-
-    builder = BinaryPayloadBuilder(byteorder=Endian.Big,
-                                   wordorder=Endian.Big)
-
+        
     ra = solve_coo.ra.deg
     if ra > 180:
         ra -= 360
@@ -468,7 +465,7 @@ def write_modbus(solve_coo):
         builder.add_32bit_float(value)
         payload = builder.build()
         registers = builder.to_registers()
-        rr = modbus_client.write_registers(address, registers, unit=UNIT)
+        rr = modbus_client.write_registers(address, registers, unit=modbus_UNIT)
         time.sleep(0.1)
 
         if rr.isError():
