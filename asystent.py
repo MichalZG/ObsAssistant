@@ -468,7 +468,7 @@ def write_modbus(solve_coo):
         builder.add_32bit_float(value)
         payload = builder.build()
         registers = builder.to_registers()
-        rr = client.write_registers(address, registers, unit=UNIT)
+        rr = modbus_client.write_registers(address, registers, unit=UNIT)
         time.sleep(0.1)
 
         if rr.isError():
