@@ -24,6 +24,14 @@ import pygame
 from photutils import DAOStarFinder
 from astropy.stats import sigma_clipped_stats
 import matplotlib.image as mpimg
+from pymodbus.client.sync import ModbusTcpClient as ModbusClient
+from pymodbus.constants import Endian
+from pymodbus.payload import BinaryPayloadBuilder
+from pymodbus.payload import BinaryPayloadDecoder
+from collections import OrderedDict
+import struct
+
+
 warnings.filterwarnings('ignore')
 watchdog_img = mpimg.imread('/opt/ObsAssistant/watchdog.dif')
 
@@ -67,6 +75,14 @@ imageSize = 1000
 files_to_rm = ['*.axy', '*.corr', '*.xyls', '*.match',
                '*.new', '*.rdls', '*.solved', '*.wcs']
 
+
+# MODBUS
+modbus_ip = '192.168.2.16'
+modbus_port = 502
+modbus_UNIT = 0x1
+c_registers = 2
+
+
 ##############
 flux_tab = deque(maxlen=max_plot_len)
 snr_tab = deque(maxlen=max_plot_len)
@@ -99,7 +115,13 @@ class WatchObs(PatternMatchingEventHandler):
             im_counter += 1
             solve_coo, solve_file_hdr, solve_file_data = open_solve_file(
                 str(self.file_to_open).split(".")[0]+".new")
+            if modbus_client:
+                if write_modbus(solve_coo):
+                    print('MODBUS UPDATE')
+                else:
+                    print('MODBUS FAIL!')
             show_ds9(fits_coo, solve_coo)
+
             star = Star()
             x, y = star_pix(solve_file_hdr, fits_coo)
             if ((x < imageSize) and (y < imageSize)):
@@ -285,7 +307,7 @@ def solve_field(fits_coo):
                                        '--scale-units', 'arcsecperpix',
                                        '--scale-low', '%.5f' % scale_low,
                                        '--scale-high', '%.5f' % scale_high,
-                           '--overwrite',
+                                       '--overwrite',
                                        '--no-verify',
                                        '--no-plots',
                            str(event_handler.file_to_open)]
@@ -406,6 +428,55 @@ def clear():
             os.remove(j)
 
 
+def connect_modbus(modbus_ip, modbus_port):
+    try:
+        client = ModbusClient(modbus_ip, port=modbus_port)
+    except:
+        return None
+    if client.connect():
+        return client
+    return None
+
+
+def read_modbus():
+    pass
+
+
+def write_modbus(solve_coo):
+
+    if solve_coo is None:
+        return False
+
+    builder = BinaryPayloadBuilder(byteorder=Endian.Big,
+                                   wordorder=Endian.Big)
+
+    ra = solve_coo.ra.deg
+    if ra > 180:
+        ra -= 360
+    ra = ra * np.pi/180.
+    dec = solve_coo.dec.deg * np.pi/180.
+
+    val_dict = {
+        24592: ra,
+        24590: dec
+        24594: time.time()
+    }
+
+    for address, value in val_dict.iteritems():
+        builder = BinaryPayloadBuilder(byteorder=Endian.Big,
+                                       wordorder=Endian.Big)
+        builder.add_32bit_float(value)
+        payload = builder.build()
+        registers = builder.to_registers()
+        rr = client.write_registers(address, registers, unit=UNIT)
+        time.sleep(0.1)
+
+        if rr.isError():
+            return False
+
+    return True
+
+
 if __name__ == "__main__":
 
     args = sys.argv[1:]
@@ -414,6 +485,7 @@ if __name__ == "__main__":
     else:
         print("error - write path to files")
 
+    modbus_client = connect_modbus(modbus_ip, modbus_port)
     event_handler = WatchObs()
     observer = Observer()
     observer.schedule(event_handler, path=path, recursive=False)
