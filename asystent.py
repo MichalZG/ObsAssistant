@@ -10,6 +10,7 @@ import subprocess as sub
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.wcs import WCS
+from astropy.time import Time
 import warnings
 import threading
 import numpy as np
@@ -20,7 +21,7 @@ from photutils import aperture_photometry
 import matplotlib.pyplot as plt
 import matplotlib
 import sys
-import pygame
+# import pygame
 from photutils import DAOStarFinder
 from astropy.stats import sigma_clipped_stats
 import matplotlib.image as mpimg
@@ -30,6 +31,7 @@ from pymodbus.payload import BinaryPayloadBuilder
 from pymodbus.payload import BinaryPayloadDecoder
 from collections import OrderedDict
 import struct
+from datetime import datetime as dt
 
 
 warnings.filterwarnings('ignore')
@@ -46,10 +48,10 @@ annulis_in = 2  # value add to aperture
 annulis_out = 4  # value add to aperture
 
 # solve-filed param
-time_limit = 15  # time limit before giving up
+time_limit = 30  # time limit before giving up
 scale_low = 1.11  # arcsec
 scale_high = 1.13  # arcsec
-solve_radius = 0.8  # deg
+solve_radius = 2  # deg
 solve_depth = '40,80,100,160,250'
 
 
@@ -59,6 +61,7 @@ dec_key = 'DEC'
 filter_key = 'FILTER'
 object_key = 'OBJECT'
 exp_key = 'EXPTIME'
+date_key = 'DATE-OBS'
 time_key = 'TIME-OBS'
 
 # watchdog param
@@ -116,17 +119,17 @@ class WatchObs(PatternMatchingEventHandler):
             solve_coo, solve_file_hdr, solve_file_data = open_solve_file(
                 str(self.file_to_open).split(".")[0]+".new")
             if modbus_client:
-                if write_modbus(solve_coo):
+                if write_modbus(solve_coo, solve_file_hdr):
                     print('MODBUS UPDATE')
                 else:
                     print('MODBUS FAIL!')
-            show_ds9(fits_coo, solve_coo)
+            show_ds9(fits_coo, solve_coo, solve=True)
 
             star = Star()
             x, y = star_pix(solve_file_hdr, fits_coo)
             if ((x < imageSize) and (y < imageSize)):
                 #fileName = self.file_to_open.split("/")[-1]
-                if fits_coo.separation(solve_coo) < 50 * u.arcmin:
+                if fits_coo.separation(solve_coo) < 8 * u.arcmin:
                     x, y = star.centroid(x, y, solve_file_data, radius)
                     fwhm_x, fwhm_y = star.get_fwhm(x, y, radius,
                                                    solve_file_data, medv=None)
@@ -147,6 +150,8 @@ class WatchObs(PatternMatchingEventHandler):
 
                     plot(flux_tab, snr_tab, fwhm_tab, pol_tab, avg_pol,
                          solve_file_hdr, plot_clear, im_counter, bkg_median)
+        else:
+                show_ds9(None, None, solve=False)
 """
     def on_modified(self, event):
         print("Got it!", event.src_path)
@@ -206,7 +211,6 @@ class Star:
         fwhm_x, cx, sdx, maxx = self.calc_fwhm(xarr, medv=medv)
         fwhm_y, cy, sdy, maxy = self.calc_fwhm(yarr, medv=medv)
 
-        print('fwhm:', fwhm_x, fwhm_y)
 
         return fwhm_x, fwhm_y
 
@@ -224,7 +228,6 @@ class Star:
                 cx = i[1] + x0
                 cy = i[2] + y0
 
-        print('center: ', cx + 1, cy + 1)
         return (cx, cy)
 
     def cut_region(self, x, y, radius, data):
@@ -254,7 +257,6 @@ class Star:
                                                aperture_area * math.pow(std, 2))
         except ValueError:
             signal_to_noise = 0
-        print('snr:', signal_to_noise)
 
         return signal_to_noise, median
 
@@ -264,7 +266,6 @@ class Star:
         mean, median, std = sigma_clipped_stats(arr, sigma=sigma)
 
         aperture_r = ((fwhm_x + fwhm_y)/2.0) * fwhm_multiplier
-        print('aper:', aperture_r)
         # r_in = aperture_r + annulis_in
         # r_out = aperture_r + annulis_out
         apertures = CircularAperture((x, y), aperture_r)
@@ -280,21 +281,28 @@ class Star:
         # print 'bkg', phot_table['aperture_sum_bkg'] / annulus_area
         # final_sum = phot_table['aperture_sum_raw'] - bkg_sum
         final_sum = rawflux_table['aperture_sum'] - aperture_area * median
-        print('flux:', final_sum[0])
         return final_sum[0], aperture_area
 
 
-def show_ds9(fits_coo, solve_coo):
-    d = ds9.ds9()
-    d.set("file "+str(event_handler.file_to_open).split(".")[0]+".new")
-    d.set('scale zscale')
-    d.set('zoom to fit')
-    d.set('match frame wcs')
-    d.set('regions', 'fk5; line(' + str(solve_coo.ra.deg) + ',' +
-          str(solve_coo.dec.deg) + ',' + str(fits_coo.ra.deg) +
-          ',' + str(fits_coo.dec.deg) + ')')
-    d.set('regions', 'fk5; circle(' + str(fits_coo.ra.deg) +
-          ',' + str(fits_coo.dec.deg) + ',7")')
+def show_ds9(fits_coo, solve_coo, solve=True):
+
+    file_to_show = str(event_handler.file_to_open)
+    if solve:
+        file_to_show = file_to_show.split(".")[0] + ".new"
+    try:
+        d = ds9.ds9()
+        d.set("file " + file_to_show)
+        d.set('scale zscale')
+        d.set('zoom to fit')
+        if solve: 
+                d.set('match frame wcs')
+                d.set('regions', 'fk5; line(' + str(solve_coo.ra.deg) + ',' +
+                        str(solve_coo.dec.deg) + ',' + str(fits_coo.ra.deg) +
+                        ',' + str(fits_coo.dec.deg) + ')')
+                d.set('regions', 'fk5; circle(' + str(fits_coo.ra.deg) +
+                        ',' + str(fits_coo.dec.deg) + ',7")')
+    except:
+        print("DS9 PROBLEM")
 
 
 def solve_field(fits_coo):
@@ -335,6 +343,9 @@ def open_solve_file(file_to_open):
     w = WCS(hdr)
     wx, wy = w.wcs_pix2world(hdr['NAXIS1']/2, hdr['NAXIS2']/2, 1)
     solve_coo = SkyCoord(wx, wy, unit='deg')
+    print('real center:', str(solve_coo.ra.to_string(u.hour)),
+                          str(solve_coo.dec.to_string(u.deg)))
+
     return solve_coo, hdr, data.astype(int)
 
 
@@ -442,7 +453,7 @@ def read_modbus():
     pass
 
 
-def write_modbus(solve_coo):
+def write_modbus(solve_coo, solve_file_hdr):
 
     if solve_coo is None:
         return False
@@ -452,12 +463,12 @@ def write_modbus(solve_coo):
         ra -= 360
     ra = ra * np.pi/180.
     dec = solve_coo.dec.deg * np.pi/180.
+    ha = calculate_ha(solve_coo, solve_file_hdr)
 
-    val_dict = {
-        24592: ra,
-        24590: dec,
-        24594: time.time() - 1544000000.
-    }
+    val_dict = OrderedDict([
+        (24592, ra),
+        (24590, dec),
+        (24594, ha)])
 
     for address, value in val_dict.items():
         builder = BinaryPayloadBuilder(byteorder=Endian.Big,
@@ -475,6 +486,21 @@ def write_modbus(solve_coo):
     return True
 
 
+def calculate_ha(coo, hdr):
+    hdr_time = 'T'.join([hdr[date_key], hdr[time_key]])
+    exp_time = hdr[exp_key]
+    # time correction in s. (time for analize)
+    const_corr = 5.  
+ 
+    t_hdr = Time(hdr_time, format='isot', scale='utc')
+    t_hdr.delta_ut1_utc = 0.
+    st_hdr = t_hdr.sidereal_time('apparent', 20.0672)
+    ha_hdr = st_hdr.hour - coo.ra.hour + (exp_time / 3600.) + (const_corr / 3600.)
+    ha_hdr_rad = (ha_hdr * 15 * np.pi) / 180.
+
+    return ha_hdr_rad
+
+
 if __name__ == "__main__":
 
     args = sys.argv[1:]
@@ -488,17 +514,17 @@ if __name__ == "__main__":
     observer = Observer()
     observer.schedule(event_handler, path=path, recursive=False)
     observer.start()
-    pygame.init()
+    #pygame.init()
     try:
         while True:
             time.sleep(sleep_time)
             sleep_dur += 1
-            if sleep_dur >= max_sleep:
-                pygame.mixer.music.load('/opt/ObsAssistant/Angry-dog.mp3')
-                pygame.mixer.music.play()
-                time.sleep(7)
-            else:
-                pygame.mixer.music.stop()
+            #if sleep_dur >= max_sleep:
+            #    pygame.mixer.music.load('/opt/ObsAssistant/Angry-dog.mp3')
+            #    pygame.mixer.music.play()
+            #    time.sleep(7)
+            #else:
+            #    pygame.mixer.music.stop()
 
     except KeyboardInterrupt:
         clear()
